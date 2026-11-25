@@ -2,6 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    <link rel="icon" href="img/favicon.png" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -4109,11 +4110,21 @@
       function update(dt) {
         if (soloDM && mode === "online" && !alive && t > dieT) respawn();
         if (mode === "online" || hostNet || mode === "cnet") onlineTick();
-        if (soloDM && mode === "online" && dmEndT > 0 && state === "play" && t >= dmEndT) {
+        if (
+          soloDM &&
+          mode === "online" &&
+          dmEndT > 0 &&
+          state === "play" &&
+          t >= dmEndT
+        ) {
           state = "over";
           document.exitPointerLock && document.exitPointerLock();
           const st = ST["Você"] || ST[myName] || { k: 0 };
-          showOv("TEMPO ESGOTADO", "Mata-Mata · " + (st.k || 0) + " abates em 10 minutos.", OVB());
+          showOv(
+            "TEMPO ESGOTADO",
+            "Mata-Mata · " + (st.k || 0) + " abates em 10 minutos.",
+            OVB(),
+          );
         }
         ctfTick();
         if (mode === "cnet") applyHost();
@@ -4740,7 +4751,9 @@
               : ggOn
                 ? "NÍVEL " + (ggLv + 1) + "/" + GGL.length
                 : soloDM
-                  ? (dmEndT > 0 ? fm(Math.max(0, dmEndT - t)) : "MATA-MATA")
+                  ? dmEndT > 0
+                    ? fm(Math.max(0, dmEndT - t))
+                    : "MATA-MATA"
                   : "ONLINE"
             : planted
               ? "💣 " + Math.max(0, bombT).toFixed(1)
@@ -6006,32 +6019,36 @@
           g.fillRect(0, 0, w, h);
           for (let i = 0; i < 70; i++) {
             const y = Math.random() * h;
-            g.strokeStyle = i % 3 ? "rgba(75,35,14,.22)" : "rgba(255,220,160,.24)";
+            g.strokeStyle =
+              i % 3 ? "rgba(75,35,14,.22)" : "rgba(255,220,160,.24)";
             g.lineWidth = 1 + Math.random() * 2;
             g.beginPath();
             g.moveTo(Math.random() * 25, y);
-            g.bezierCurveTo(w * .25, y - 12, w * .65, y + 14, w, y - 4);
+            g.bezierCurveTo(w * 0.25, y - 12, w * 0.65, y + 14, w, y - 4);
             g.stroke();
           }
         });
         woodTex.encoding = THREE.sRGBEncoding;
-        const barrelGeo = new THREE.LatheGeometry([
-          // Cabo estreito, transição longa e corpo largo de taco.
-          new THREE.Vector2(0.018, -0.38),
-          new THREE.Vector2(0.021, -0.33),
-          new THREE.Vector2(0.025, -0.20),
-          new THREE.Vector2(0.031, -0.02),
-          new THREE.Vector2(0.040, 0.16),
-          new THREE.Vector2(0.050, 0.29),
-          new THREE.Vector2(0.058, 0.36),
-          new THREE.Vector2(0.061, 0.405),
-          // Ponta arredondada e larga, sem afunilar em formato pontudo.
-          new THREE.Vector2(0.060, 0.432),
-          new THREE.Vector2(0.054, 0.451),
-          new THREE.Vector2(0.040, 0.465),
-          new THREE.Vector2(0.020, 0.473),
-          new THREE.Vector2(0, 0.475),
-        ], 32);
+        const barrelGeo = new THREE.LatheGeometry(
+          [
+            // Cabo estreito, transição longa e corpo largo de taco.
+            new THREE.Vector2(0.018, -0.38),
+            new THREE.Vector2(0.021, -0.33),
+            new THREE.Vector2(0.025, -0.2),
+            new THREE.Vector2(0.031, -0.02),
+            new THREE.Vector2(0.04, 0.16),
+            new THREE.Vector2(0.05, 0.29),
+            new THREE.Vector2(0.058, 0.36),
+            new THREE.Vector2(0.061, 0.405),
+            // Ponta arredondada e larga, sem afunilar em formato pontudo.
+            new THREE.Vector2(0.06, 0.432),
+            new THREE.Vector2(0.054, 0.451),
+            new THREE.Vector2(0.04, 0.465),
+            new THREE.Vector2(0.02, 0.473),
+            new THREE.Vector2(0, 0.475),
+          ],
+          32,
+        );
         const barrel = new THREE.Mesh(
             barrelGeo,
             M(0xffffff, { map: woodTex, shininess: 65, specular: 0x6b4528 }),
@@ -6053,9 +6070,9 @@
             M(0xf0dfbd, { shininess: 110 }),
           );
         barrel.position.set(-0.09, -0.02, 0.01);
-        grip.position.set(-0.09, -0.30, 0.01);
+        grip.position.set(-0.09, -0.3, 0.01);
         knob.position.set(-0.09, -0.39, 0.01);
-        band.position.set(-0.09, -0.20, 0.01);
+        band.position.set(-0.09, -0.2, 0.01);
         logoBand.position.set(-0.09, 0.29, 0.01);
         batG.add(barrel, grip, knob, band, logoBand);
         batG.rotation.z = 0.2;
@@ -6916,8 +6933,8 @@
           ctfOn
             ? "PEGA-BANDEIRA · CAPTURE 3 VEZES"
             : ggOn
-            ? "GUN GAME · mate para trocar de arma"
-            : "ONLINE · [B] abre a loja a qualquer hora",
+              ? "GUN GAME · mate para trocar de arma"
+              : "ONLINE · [B] abre a loja a qualquer hora",
           2500,
         );
       }
@@ -7852,7 +7869,8 @@
             g.save();
             g.globalAlpha = 0.13;
             for (let i = 0; i < 2600; i++) {
-              const x = Math.random() * w, y = Math.random() * h;
+              const x = Math.random() * w,
+                y = Math.random() * h;
               g.fillStyle = i % 2 ? "#ffffff" : "#071522";
               g.fillRect(x, y, 1 + Math.random() * 2, 1);
             }
@@ -9341,6 +9359,9 @@
           n: "Through the White Cloud",
           src: "ost/through%20the%20white%20cloud.wav",
         },
+        { n: "Bubbling Lights", src: "ost/bubbling%20lights.mp3" },
+        { n: "Changes", src: "ost/changes.wav" },
+        { n: "A Moment Apart", src: "ost/a%20moment%20apart.mp3" },
       ];
       let mu = {
         on: false,
@@ -11563,7 +11584,16 @@
         group.add(pole, cloth);
         group.position.set(x, 0, z);
         S.add(group);
-        return { team, x, z, group, homeX: x, homeZ: z, carried: false, dropped: false };
+        return {
+          team,
+          x,
+          z,
+          group,
+          homeX: x,
+          homeZ: z,
+          carried: false,
+          dropped: false,
+        };
       }
       function initCTF() {
         if (!ctfOn) return;
@@ -11586,16 +11616,27 @@
         const enemyTeam = myTeam === "T" ? "CT" : "T";
         const enemyFlag = ctfFlags[enemyTeam];
         const ownFlag = ctfFlags[myTeam];
-        if (alive && !ctfCarry && !enemyFlag.carried &&
-            Math.hypot(pos.x - enemyFlag.group.position.x, pos.z - enemyFlag.group.position.z) < 2.1) {
+        if (
+          alive &&
+          !ctfCarry &&
+          !enemyFlag.carried &&
+          Math.hypot(
+            pos.x - enemyFlag.group.position.x,
+            pos.z - enemyFlag.group.position.z,
+          ) < 2.1
+        ) {
           enemyFlag.carried = true;
           ctfCarry = true;
           enemyFlag.group.visible = true;
           banner("BANDEIRA INIMIGA CAPTURADA! VOLTE À BASE", 2200);
         }
-        if (alive && ctfCarry &&
-            Math.hypot(pos.x - ownFlag.homeX, pos.z - ownFlag.homeZ) < 3 &&
-            !ownFlag.dropped && !ownFlag.carried) {
+        if (
+          alive &&
+          ctfCarry &&
+          Math.hypot(pos.x - ownFlag.homeX, pos.z - ownFlag.homeZ) < 3 &&
+          !ownFlag.dropped &&
+          !ownFlag.carried
+        ) {
           ctfCarry = false;
           ctfScore[myTeam]++;
           resetCTFFlag(enemyFlag);
@@ -11603,7 +11644,11 @@
           if (ctfScore[myTeam] >= 3) {
             state = "over";
             document.exitPointerLock && document.exitPointerLock();
-            showOv("VITÓRIA!", "Pega-Bandeira · " + ctfScore.T + " × " + ctfScore.CT, OVB());
+            showOv(
+              "VITÓRIA!",
+              "Pega-Bandeira · " + ctfScore.T + " × " + ctfScore.CT,
+              OVB(),
+            );
           }
         }
         if (ctfCarry && enemyFlag) {
