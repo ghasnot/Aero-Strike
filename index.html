@@ -331,10 +331,9 @@
       .ki.me {
         border-color: #ff5a5a;
       }
-      .ki svg {
+      .ki img {
         height: 14px;
         width: 42px;
-        fill: #fff;
       }
       .tn {
         color: #ffb86b;
@@ -415,10 +414,10 @@
         gap: 2px;
         font-size: 12px;
       }
-      .bc svg {
+      .bc img {
         height: 22px;
         width: 60px;
-        fill: #0a6a9e;
+        filter: brightness(0) saturate(100%) invert(29%) sepia(68%) saturate(1031%) hue-rotate(160deg) brightness(91%) contrast(95%);
       }
       .bc.no {
         opacity: 0.45;
@@ -700,10 +699,9 @@
         background: rgba(255, 255, 255, 0.35);
         border: 1px solid #fff;
       }
-      .ws svg {
+      .ws img {
         height: 16px;
         width: 46px;
-        fill: #fff;
       }
       .ws i {
         font-style: normal;
@@ -750,7 +748,7 @@
         text-align: left;
         gap: 4px;
       }
-      .cols .bc svg {
+      .cols .bc img {
         width: 46px;
         height: 16px;
         flex: none;
@@ -1439,13 +1437,18 @@
         background: rgba(255, 255, 255, 0.3);
         box-shadow: none;
       }
-      .ki svg.sm {
+      .ki img.sm {
         width: 18px;
         height: 14px;
       }
-      .ki svg.ns {
+      .ki img.ns {
         width: 18px;
         height: 18px;
+        flex: none;
+      }
+      .ki img.hs {
+        width: 16px;
+        height: 16px;
         flex: none;
       }
       .ki .as {
@@ -2173,11 +2176,11 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .inv-item svg {
+      .inv-item img {
         display: block;
         width: 100%;
         height: 28px;
-        fill: #d7efff;
+        filter: brightness(0) saturate(100%) invert(89%) sepia(10%) saturate(1510%) hue-rotate(174deg) brightness(100%) contrast(102%);
       }
       .inv-item small {
         font-size: 9px;
@@ -4898,15 +4901,11 @@
           [0, 1],
           [0, -1],
         ];
-      const IC = [
-          '<path d="M6 14C8 4 26 0 40 6 28 5 18 8 14 15z"/><circle cx="8" cy="12" r="3" fill="none" stroke="#fff" stroke-width="1.6"/>',
-          '<rect x="12" y="3" width="26" height="5"/><rect x="12" y="8" width="7" height="8"/>',
-          '<rect x="6" y="4" width="34" height="5"/><rect x="14" y="9" width="5" height="7"/><rect x="2" y="5" width="5" height="3"/>',
-          '<rect x="2" y="4" width="40" height="4"/><rect x="0" y="5" width="8" height="6"/><rect x="18" y="8" width="5" height="8"/>',
-          '<rect x="0" y="6" width="44" height="3"/><rect x="12" y="3" width="14" height="3"/><rect x="0" y="5" width="9" height="7"/>',
-          '<rect x="0" y="4" width="44" height="6"/><rect x="14" y="10" width="8" height="6"/>',
-        ],
-        ico = (c) => '<svg viewBox="0 0 44 16">' + IC[c] + "</svg>";
+      const weaponSymbol = (id) =>
+          '<img src="img/icons/weapons/' +
+          id +
+          '.webp" alt="" aria-hidden="true">',
+        ico = (c) => weaponSymbol("class-" + c);
       function buildMap(g) {
         G = g;
         MI = g.meta || {
@@ -5103,8 +5102,7 @@
         hov = null,
         ST = {};
       const stt = (n) => ST[n] || (ST[n] = { k: 0, d: 0, h: 0, g: 0 }),
-        ICG =
-          '<svg viewBox="0 0 44 16"><circle cx="22" cy="8" r="6"/><circle cx="14" cy="9" r="4"/><circle cx="30" cy="9" r="4"/></svg>',
+        ICG = weaponSymbol("equipment-fumaca"),
         ICS =
           '<svg viewBox="0 0 44 16"><path d="M14 1h16v7c0 4-8 7-8 7s-8-3-8-7z"/></svg>';
       const COLS = [
@@ -6882,8 +6880,11 @@
         money = 9000;
         setGun();
         let x, z;
-        if (mode === "online" || ggOn) [x, z] = rndCell();
-        else {
+        if ((mode === "online" && !ctfOn) || ggOn) [x, z] = rndCell();
+        else if (ctfOn) {
+          const base = myTeam === "T" ? MI.T : MI.C;
+          [x, z] = base;
+        } else {
           let k = 0;
           do {
             x = (myTeam === "T" ? MI.T : MI.C)[0] + (Math.random() - 0.5) * 16;
@@ -7330,14 +7331,25 @@
       };
       function startBtn() {
         spectator = lmode === "spec";
-        if (lmode === "dm" || lmode === "gg" || lmode === "ctf") {
+        if (lmode === "dm" || lmode === "ctf") {
           spectator = false;
           soloDM = true;
           ctfOn = lmode === "ctf";
           ctfCarry = false;
+          ggOn = false;
+          showTeamPick(maps()[mi].g, (team, map) => {
+            setTeam(team, true);
+            begin("online", map);
+          });
+          return;
+        }
+        if (lmode === "gg") {
+          spectator = false;
+          soloDM = true;
+          ctfOn = false;
           myTeam = "T";
-          ggOn = lmode === "gg";
-          if (ggOn) GGL = ggFixedOrder();
+          ggOn = true;
+          GGL = ggFixedOrder();
           begin("online", maps()[mi].g);
           return;
         }
@@ -8627,99 +8639,31 @@
         }
       });
       let pdm = {};
-      const sv = (p) => '<svg viewBox="0 0 44 16">' + p + "</svg>",
-        ICH = sv(
-          '<circle cx="22" cy="9.5" r="5.5"/><rect x="20" y="1.5" width="4" height="3.5"/><rect x="24" y="1" width="9" height="2" transform="rotate(18 24 2)"/><circle cx="34" cy="5.5" r="1.6"/>',
-        ),
-        ICF = sv(
-          '<rect x="17" y="4" width="10" height="11" rx="1.5"/><rect x="18" y="1.5" width="8" height="3"/><path d="M33 8l2-3.5 1 3.5 3.5 1-3.5 1-1 3.5-2-3.5-3.5-1z"/><path d="M9 8l2.5-3 .5 3 3 .8-3 .8-.5 3-2.5-3-3-.8z"/>',
-        ),
-        ICI = sv(
-          '<rect x="19" y="6" width="6" height="9.5" rx="2.5"/><rect x="21" y="3.5" width="2" height="3"/><path d="M22 0c3.5 2 3.5 4 1.5 5.5-1-1-3.5-1-3.5-3 1.5-1 1.5-1 2-2.5z"/>',
-        ),
-        ICSM =
-          '<svg class="sm" viewBox="0 0 20 16"><circle cx="6.5" cy="9" r="4.5"/><circle cx="13" cy="7.5" r="5"/><circle cx="10" cy="11" r="4"/></svg>',
+      const SHP = new Set([
+          "rolha", "canudo", "cola", "mola", "deagle", "rev", "mini",
+          "mp7", "ump", "confete", "ak", "m4", "m4s", "pipoca", "luneta",
+          "awp", "ssg", "teco", "nova", "xm", "cano", "mang", "neg",
+        ]),
         GIC = {
-          fumaca: ICG,
-          he: ICH,
-          flash: ICF,
-          inc: ICI,
-          barreira: sv(
-            '<path d="M12 4h20v2h-2v8h-4V6h-3v8h-4V6h-3v8h-4V6h-2V4z"/>',
-          ),
+          fumaca: weaponSymbol("equipment-fumaca"),
+          he: weaponSymbol("equipment-he"),
+          flash: weaponSymbol("equipment-flash"),
+          inc: weaponSymbol("equipment-inc"),
+          barreira: weaponSymbol("equipment-barreira"),
         },
-        SHP = {
-          rolha: sv(
-            '<rect x="9" y="3" width="27" height="5" rx="1"/><path d="M11 8h8l-1 7h-6z"/><rect x="19" y="8" width="4" height="2"/>',
-          ),
-          canudo: sv(
-            '<rect x="9" y="3" width="20" height="5" rx="1"/><rect x="29" y="3.5" width="12" height="4" rx="1.8"/><path d="M11 8h8l-1 7h-6z"/>',
-          ),
-          cola: sv(
-            '<rect x="10" y="3" width="24" height="4.5" rx="1"/><path d="M11 7.5h7l-1 8h-6z"/><rect x="34" y="4" width="5" height="2"/>',
-          ),
-          mola: sv(
-            '<rect x="6" y="3" width="30" height="5"/><rect x="36" y="4" width="6" height="2.5"/><path d="M16 8h5v8h-5z"/><path d="M8 8h5v4H8z"/>',
-          ),
-          deagle: sv(
-            '<rect x="6" y="2" width="31" height="6" rx="1"/><rect x="37" y="3" width="5" height="3"/><path d="M9 8h9l-1 8h-7z"/>',
-          ),
-          rev: sv(
-            '<circle cx="17" cy="6" r="4.5"/><rect x="20" y="3.5" width="21" height="3.5" rx="1"/><path d="M10 8l5 1 2 7h-5z"/>',
-          ),
-          mini: sv(
-            '<rect x="8" y="3" width="26" height="6" rx="1"/><rect x="34" y="4" width="8" height="3"/><rect x="15" y="9" width="5" height="7"/><rect x="2" y="4" width="6" height="2"/>',
-          ),
-          mp7: sv(
-            '<rect x="6" y="3" width="30" height="5" rx="1"/><rect x="36" y="4" width="6" height="2.5"/><rect x="18" y="8" width="4" height="7"/><path d="M2 3h5v4H2z"/><rect x="12" y="1" width="12" height="2"/>',
-          ),
-          ump: sv(
-            '<rect x="6" y="3" width="31" height="6" rx="1"/><rect x="37" y="4.5" width="6" height="2.5"/><path d="M18 9h5v7h-5z"/><path d="M0 3h6v6H0z"/>',
-          ),
-          confete: sv(
-            '<rect x="3" y="4" width="36" height="7" rx="3"/><rect x="8" y="1" width="22" height="3" rx="1.5"/><path d="M26 11h4v5h-4z"/><rect x="39" y="6" width="4" height="2"/>',
-          ),
-          ak: sv(
-            '<rect x="12" y="4" width="28" height="3.5"/><rect x="40" y="5" width="4" height="1.8"/><path d="M0 4h12l1 8h-3z"/><path d="M20 7.5h4l3.5 8h-4z"/><rect x="14" y="2.5" width="14" height="2"/>',
-          ),
-          m4: sv(
-            '<rect x="10" y="4" width="30" height="4" rx="1"/><rect x="40" y="5" width="4" height="2"/><path d="M0 4h10v7H3z"/><rect x="20" y="8" width="4" height="7"/><rect x="14" y="1.5" width="10" height="2.5" rx="1"/>',
-          ),
-          m4s: sv(
-            '<rect x="10" y="4" width="22" height="4" rx="1"/><rect x="32" y="4" width="12" height="4" rx="2"/><path d="M0 4h10v7H3z"/><rect x="20" y="8" width="4" height="7"/>',
-          ),
-          pipoca: sv(
-            '<rect x="3" y="4" width="34" height="6" rx="2"/><rect x="37" y="5.5" width="6" height="2"/><rect x="12" y="1" width="14" height="3" rx="1.5"/><path d="M26 10h4v5h-4z"/>',
-          ),
-          luneta: sv(
-            '<rect x="4" y="5" width="34" height="5" rx="1.5"/><rect x="38" y="6.5" width="5" height="2"/><rect x="12" y="1.5" width="14" height="3" rx="1.5"/><circle cx="14" cy="3" r="2"/><circle cx="25" cy="3" r="2"/><rect x="18" y="10" width="4" height="5"/>',
-          ),
-          awp: sv(
-            '<rect x="0" y="7" width="44" height="2.5"/><rect x="12" y="2" width="16" height="4" rx="2"/><path d="M0 6h14v5H3z"/><rect x="20" y="9" width="4" height="4"/>',
-          ),
-          ssg: sv(
-            '<rect x="2" y="7" width="42" height="2"/><rect x="14" y="3" width="12" height="3" rx="1.5"/><path d="M0 6h14v5H2z"/>',
-          ),
-          teco: sv(
-            '<rect x="2" y="5" width="38" height="4" rx="1"/><rect x="40" y="6" width="4" height="2"/><rect x="12" y="1" width="14" height="3.5" rx="1.5"/><path d="M0 5h6v7H0z"/><rect x="22" y="9" width="5" height="7"/>',
-          ),
-          nova: sv(
-            '<rect x="2" y="5" width="40" height="3"/><rect x="2" y="9" width="30" height="2.5"/><rect x="18" y="8" width="8" height="4" rx="1.5"/><path d="M0 5h6v5H0z"/>',
-          ),
-          xm: sv(
-            '<rect x="2" y="4" width="40" height="4" rx="1"/><rect x="6" y="9" width="28" height="3" rx="1"/><path d="M0 4h8v6H2z"/>',
-          ),
-          cano: sv(
-            '<rect x="14" y="4" width="26" height="2.2"/><rect x="14" y="6.5" width="26" height="2.2"/><path d="M4 4h10v6L8 15z"/>',
-          ),
-          mang: sv(
-            '<rect x="6" y="4" width="34" height="5" rx="1"/><rect x="40" y="5" width="4" height="2.5"/><rect x="16" y="9" width="10" height="6" rx="1"/><path d="M0 4h6v6H0z"/>',
-          ),
-          neg: sv(
-            '<rect x="6" y="4" width="34" height="5" rx="1"/><rect x="40" y="5" width="4" height="2.5"/><circle cx="21" cy="12" r="4"/><path d="M0 4h6v6H0z"/>',
-          ),
-        },
-        wico = (w) => (w.gr ? GIC[w.id] : SHP[w.id] || ico(w.c));
+        killfeedIcon = (id, cls = "") =>
+          '<img class="' +
+          cls +
+          '" src="img/icons/killfeed/' +
+          id +
+          '.webp" alt="" aria-hidden="true">',
+        ICSM = killfeedIcon("smoke", "sm"),
+        wico = (w) =>
+          w.gr
+            ? GIC[w.id] || weaponSymbol("class-" + w.c)
+            : SHP.has(w.id)
+              ? weaponSymbol("weapon-" + w.id)
+              : ico(w.c);
       const invHex = (n) => "#" + n.toString(16).padStart(6, "0"),
         invGroupNames = {
           pistols: "PISTOLAS",
@@ -9315,12 +9259,10 @@
               "</span>",
           ).join("") +
           wico(w) +
-          (ns
-            ? '<svg class="ns" viewBox="0 0 20 20" aria-label="Sem mira"><circle cx="10" cy="10" r="6" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M10 1v5m0 8v5M1 10h5m8 0h5M3 17 17 3" fill="none" stroke="#ffb86b" stroke-width="2"/></svg>'
-            : "") +
+          (ns ? killfeedIcon("noscope", "ns") : "") +
           (sm ? ICSM : "") +
           (bl ? ICBL : "") +
-          (hs ? "<b>◎</b>" : "") +
+          (hs ? killfeedIcon("headshot", "hs") : "") +
           '<span class="' +
           col(v) +
           '"' +
@@ -10281,8 +10223,7 @@
           0.35,
           1 - ((FO[w.id] || 0) * Math.max(0, (d || 0) - 10)) / 100,
         );
-      const ICBL =
-        '<svg class="sm" viewBox="0 0 20 16"><path d="M1 8c3-5 15-5 18 0-3 5-15 5-18 0z" fill="none" stroke="#fff" stroke-width="1.6"/><circle cx="10" cy="8" r="2.6"/><path d="M3 15L17 1" stroke="#fff" stroke-width="1.8"/></svg>';
+      const ICBL = killfeedIcon("blind", "sm");
       const moneyOf = (n) => {
         if (n === "Você") return money;
         const r =
@@ -11535,7 +11476,7 @@
       }
       function spawnDM() {
         nm = 0;
-        ROS = [{ name: "Você", team: "T" }];
+        ROS = [{ name: "Você", team: ggOn ? "T" : myTeam }];
         if (ggOn) {
           for (let i = 0; i < 7; i++) {
             const q = rndCell();
@@ -11551,12 +11492,13 @@
         } else {
           for (let i = 0; i < 4; i++) {
             const q = rndCell();
-            mkBot(q[0], q[1], "T", 0, 0);
+            mkBot(q[0], q[1], myTeam, 0, 0);
           }
           nm = 0;
+          const enemyTeam = myTeam === "T" ? "CT" : "T";
           for (let i = 0; i < 5; i++) {
             const q = rndCell();
-            mkBot(q[0], q[1], "CT", i % 2, 0);
+            mkBot(q[0], q[1], enemyTeam, i % 2, 0);
           }
           bots.forEach((b) => {
             b.w = BW[Math.floor(Math.random() * BW.length)];
