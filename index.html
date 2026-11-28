@@ -703,6 +703,17 @@
         height: 16px;
         width: 46px;
       }
+      .ws svg,
+      .cols .bc svg {
+        width: 46px;
+        height: 16px;
+        flex: none;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
       .ws i {
         font-style: normal;
         opacity: 0.8;
@@ -1235,6 +1246,7 @@
         width: min(560px, 94vw);
         max-height: 86vh;
         overflow: auto;
+        overflow-x: hidden;
         box-sizing: border-box;
         padding: 18px 22px;
         color: #06466e;
@@ -1255,16 +1267,20 @@
       }
       .ct {
         display: flex;
+        flex-wrap: wrap;
         gap: 6px;
         margin-bottom: 14px;
         border-bottom: 2px solid #fff;
       }
       .ct span {
-        padding: 8px 18px;
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 8px;
         font-weight: 800;
-        letter-spacing: 2px;
+        letter-spacing: 1px;
         font-size: 13px;
         cursor: pointer;
+        text-align: center;
         border-bottom: 3px solid transparent;
       }
       .ct .on {
@@ -3168,6 +3184,54 @@
         S.add(b);
         bub.push(b);
       }
+      function removeBubble(bubble) {
+        const i = bub.indexOf(bubble);
+        if (i < 0) return;
+        S.remove(bubble);
+        bubble.geometry.dispose();
+        bubble.material.dispose();
+        bub.splice(i, 1);
+      }
+      function spawnDeathBubbles(bot) {
+        const p = bot.g.position;
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + Math.random() * 0.3,
+            r = 0.2 + Math.random() * 0.3,
+            bubble = new THREE.Mesh(
+              new THREE.SphereGeometry(0.13 + Math.random() * 0.04, 12, 10),
+              new THREE.MeshBasicMaterial({
+                color: 0x7fe8ff,
+                transparent: true,
+                opacity: 0.82,
+                depthWrite: false,
+              }),
+            );
+          bubble.position.set(
+            p.x + Math.cos(a) * r,
+            p.y + 0.85 + Math.random() * 0.35,
+            p.z + Math.sin(a) * r,
+          );
+          bubble.userData.s = 0.45 + Math.random() * 0.4;
+          bubble.userData.life = 4;
+          bubble.userData.deathBubble = true;
+          S.add(bubble);
+          bub.push(bubble);
+        }
+      }
+      function updateBubbles(dt) {
+        for (let i = bub.length - 1; i >= 0; i--) {
+          const bubble = bub[i];
+          bubble.position.y += dt * bubble.userData.s;
+          if (bubble.userData.deathBubble) {
+            bubble.userData.life -= dt;
+            bubble.material.opacity = Math.min(
+              0.82,
+              Math.max(0, bubble.userData.life / 1.2) * 0.82,
+            );
+            if (bubble.userData.life <= 0) removeBubble(bubble);
+          } else if (bubble.position.y > 25) bubble.position.y = 0;
+        }
+      }
       // arma
       const gun = new THREE.Group();
       const gunParts = [];
@@ -3201,7 +3265,7 @@
             }
           });
           model.add(scene);
-          rolhaModelHolder.position.set(0.18, -0.14, -0.86);
+          rolhaModelHolder.position.set(0.16, -0.18, -0.6);
           rolhaModelHolder.add(model);
           setGun();
         },
@@ -3252,6 +3316,7 @@
       A(0, "flash", "Cegante", 0, 0, 0.5, 1, 0, { gr: 1 });
       A(0, "inc", "Incendiária", 0, 0, 0.5, 1, 0, { gr: 1 });
       A(0, "barreira", "Granada de Parede", 0, 0, 0.5, 1, 0, { gr: 1 });
+      A(0, "gelo", "Granada de Gelo", 0, 0, 0.5, 1, 0, { gr: 1 });
       const PMC = [1, 1, 0.95, 0.9, 0.8, 0.75];
       const CN = [
           "",
@@ -3355,34 +3420,99 @@
         s.sp = sp;
       });
       let AC;
+      const BOT_BODY_GEOMETRY = (() => {
+        const w = 0.76,
+          h = 0.9,
+          r = 0.16,
+          hw = w / 2,
+          hh = h / 2,
+          shape = new THREE.Shape();
+        shape.moveTo(-hw + r, -hh);
+        shape.lineTo(hw - r, -hh);
+        shape.quadraticCurveTo(hw, -hh, hw, -hh + r);
+        shape.lineTo(hw, hh - r);
+        shape.quadraticCurveTo(hw, hh, hw - r, hh);
+        shape.lineTo(-hw + r, hh);
+        shape.quadraticCurveTo(-hw, hh, -hw, hh - r);
+        shape.lineTo(-hw, -hh + r);
+        shape.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+        const geometry = new THREE.ExtrudeGeometry(shape, {
+          depth: 0.42,
+          bevelEnabled: true,
+          bevelSegments: 3,
+          steps: 1,
+          bevelSize: 0.06,
+          bevelThickness: 0.06,
+          curveSegments: 4,
+        });
+        geometry.translate(0, 0, -0.21);
+        return geometry;
+      })();
+      const BOT_FOOT_GEOMETRY = new THREE.SphereGeometry(0.16, 16, 12);
+      function animateFeet(feet, walking, phase) {
+        if (!feet) return;
+        const stride = walking ? Math.sin(phase) : 0;
+        feet.forEach((foot, index) => {
+          const step = stride * (index === 0 ? 1 : -1);
+          foot.rotation.x = step * 0.45;
+          foot.position.y = 0.208 + Math.max(0, step) * 0.06;
+        });
+      }
       function mkBot(x, z, team, site, pl) {
         const T = team === "T",
+          color = T ? 0xff8a3d : 0x2a5bd7,
           g = new THREE.Group(),
           body = new THREE.Mesh(
-            new THREE.SphereGeometry(0.6, 24, 16),
-            M(T ? 0xff8a3d : 0x2a5bd7),
+            BOT_BODY_GEOMETRY,
+            M(color, {
+              transparent: true,
+              opacity: 0.82,
+              depthWrite: false,
+            }),
           ),
           head = new THREE.Mesh(
             new THREE.SphereGeometry(0.22, 20, 14),
-            M(0xffffff),
+            M(0xffffff, {
+              transparent: true,
+              opacity: 0.82,
+              depthWrite: false,
+            }),
           );
+          const feet = [-1, 1].map((side) => {
+            const foot = new THREE.Mesh(
+              BOT_FOOT_GEOMETRY,
+              M(color, { transparent: true, opacity: 0.82, depthWrite: false }),
+            );
+            foot.scale.set(0.9, 1.3, 1.2);
+            foot.position.set(side * 0.2, 0.208, 0.12);
+            return foot;
+          });
         body.position.y = 1;
         head.position.y = 1.85;
         if (isClassicGame() && classicModifier === "bighead")
           head.scale.setScalar(2.5);
         const vis = new THREE.Mesh(
           new THREE.SphereGeometry(0.15, 12, 10),
-          M(0x063a5c),
+          M(0x063a5c, {
+            transparent: true,
+            opacity: 0.82,
+            depthWrite: false,
+          }),
         );
         vis.scale.set(1, 0.6, 0.5);
         vis.position.set(0, 1.86, 0.17);
         const ring = new THREE.Mesh(
           new THREE.TorusGeometry(0.42, 0.05, 8, 24),
-          new THREE.MeshBasicMaterial({ color: T ? 0xffd23f : 0x7dff5a }),
+          new THREE.MeshBasicMaterial({
+            color: T ? 0xffd23f : 0x7dff5a,
+            transparent: true,
+            opacity: 0.78,
+            depthWrite: false,
+          }),
         );
         ring.rotation.x = Math.PI / 2;
         ring.position.y = 2.35;
-        g.add(body, head, vis, ring);
+        g.add(body, head, vis, ring, ...feet);
         g.position.set(x, 0, z);
         S.add(g);
         const b = {
@@ -3391,6 +3521,7 @@
           g,
           body,
           head,
+          feet,
           hp: 100,
           tx: x,
           tz: z,
@@ -3662,6 +3793,7 @@
           }
           if (b.name === carrier && !planted)
             dropBomb(b.g.position.x, b.g.position.z);
+          spawnDeathBubbles(b);
           if (mode === "train" && b.dummy) {
             b.dead = true;
             b.respawnAt = t + 1.25;
@@ -4008,6 +4140,7 @@
         grenadesBoughtThisRound = 0;
         expireSprays();
         clearBarriers();
+        clearIceFields();
         PB = [];
         pdm = {};
         roundElims = Object.create(null);
@@ -4092,7 +4225,14 @@
         money = 800;
         loss = 0;
         arm = 0;
-        GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0 };
+        GN = {
+          fumaca: 0,
+          he: 0,
+          flash: 0,
+          inc: 0,
+          barreira: 0,
+          gelo: 0,
+        };
         diedLast = false;
         startRound();
       }
@@ -4207,7 +4347,14 @@
               wk = "rolha";
               applyClassicModifierLoadout();
               arm = 0;
-              GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0 };
+              GN = {
+                fumaca: 0,
+                he: 0,
+                flash: 0,
+                inc: 0,
+                barreira: 0,
+                gelo: 0,
+              };
               diedLast = false;
             }
             if (rnd === 13 && mode === "classic") swapSides();
@@ -4250,7 +4397,8 @@
             (keys[BIND.walk] ? 3.2 : 6.5) *
             (crouch ? 0.45 : 1) *
             (w.pm || PMC[w.c]) *
-            (scoped ? 0.6 : 1),
+            (scoped ? 0.6 : 1) *
+            iceSlow(myTeam, pos.x, pos.z),
           vx = planting
             ? 0
             : ((-Math.sin(yaw) * f + Math.cos(yaw) * s) / l) * spd,
@@ -4529,7 +4677,9 @@
               continue;
             }
             const g = b.g,
-              C = b.team === "CT";
+              C = b.team === "CT",
+              previousX = g.position.x,
+              previousZ = g.position.z;
             b.t -= dt;
             const threat =
               mode === "classic" && b.t <= 0 ? botVisibleEnemy(b) : null;
@@ -4589,6 +4739,7 @@
               }
             }
             const sp2 = stepTo(g.position, b.tx, b.tz),
+              slow = iceSlow(b.team, g.position.x, g.position.z),
               ex = sp2[0] - g.position.x,
               ez = sp2[1] - g.position.z,
               ed = Math.hypot(b.tx - g.position.x, b.tz - g.position.z),
@@ -4600,11 +4751,11 @@
                 b.strafe = Math.random() < 0.5 ? 1 : -1;
               }
               const ry = g.rotation.y;
-              g.position.x += Math.cos(ry) * 2.2 * b.strafe * dt;
-              g.position.z -= Math.sin(ry) * 2.2 * b.strafe * dt;
+              g.position.x += Math.cos(ry) * 2.2 * b.strafe * slow * dt;
+              g.position.z -= Math.sin(ry) * 2.2 * b.strafe * slow * dt;
             } else if (ed > (mode === "surv" ? 8 : planted && C ? 1.8 : 0.6)) {
-              g.position.x += (ex / ed2) * 3.6 * dt;
-              g.position.z += (ez / ed2) * 3.6 * dt;
+              g.position.x += (ex / ed2) * 3.6 * slow * dt;
+              g.position.z += (ez / ed2) * 3.6 * slow * dt;
               g.rotation.y = Math.atan2(ex, ez);
             } else if (
               planted &&
@@ -4634,6 +4785,12 @@
               if (b.pp >= 1) doPlant(tS.x, tS.z);
             } else b.pp = 0;
             push(g.position, 0.8);
+            animateFeet(
+              b.feet,
+              Math.hypot(g.position.x - previousX, g.position.z - previousZ) >
+                0.001,
+              t * 9 + b.ph,
+            );
             g.position.y = Math.sin(t * 2 + b.ph) * 0.12;
             if (b.fl > 0) {
               b.fl -= dt;
@@ -4713,6 +4870,14 @@
             boom(id, n.p, n.team, n.by, n.wallId, n.v);
           }
         }
+        for (const field of iceFields.slice()) {
+          field.l -= dt;
+          field.g.rotation.y += dt * 0.08;
+          const fade = Math.min(1, Math.max(0, field.l / 1.2));
+          field.floor.material.opacity = 0.22 * fade;
+          field.ring.material.opacity = 0.8 * fade;
+          if (field.l <= 0) removeIceField(field);
+        }
         for (let i = barriers.length - 1; i >= 0; i--)
           if (barriers[i].expires <= t) removeBarrier(barriers[i].id, true);
         for (let i = fires.length - 1; i >= 0; i--) {
@@ -4759,10 +4924,7 @@
           flashT -= dt;
           $("fl").style.opacity = Math.min(1, flashT / (flashMax * 0.45));
         } else $("fl").style.opacity = 0;
-        for (const b of bub) {
-          b.position.y += dt * b.userData.s;
-          if (b.position.y > 25) b.position.y = 0;
-        }
+        updateBubbles(dt);
         for (let i = fx.length - 1; i >= 0; i--) {
           const e = fx[i];
           e.l -= dt;
@@ -5236,6 +5398,7 @@
             ["Explosiva", 300, "he", 0],
             ["Incendiária", 600, "inc", 0],
             ["Parede", 500, "barreira", 0],
+            ["Gelo", 400, "gelo", 0],
             ["Isca", 0, 0, 0],
           ],
         ],
@@ -5583,9 +5746,17 @@
           "</div><small>[B] fechar · ◀ ▶ coluna · 1-9 comprar · clique nos itens · direito: vender</small>"
         );
       }
-      let GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0 },
+      let GN = {
+          fumaca: 0,
+          he: 0,
+          flash: 0,
+          inc: 0,
+          barreira: 0,
+          gelo: 0,
+        },
         nades = [],
         fires = [],
+        iceFields = [],
         flashT = 0,
         flashMax = 1,
         gAny = false,
@@ -5607,8 +5778,16 @@
           flash: ["Cegante", 200, 2],
           inc: ["Incendiária", 600, 1],
           barreira: ["Granada de Parede", 500, 1],
+          gelo: ["Granada de Gelo", 400, 1],
         },
-        FZ = { fumaca: 0.1, he: 1, flash: 0.9, inc: 0, barreira: 0.2 },
+        FZ = {
+          fumaca: 0.1,
+          he: 1,
+          flash: 0.9,
+          inc: 0,
+          barreira: 0.2,
+          gelo: 0.8,
+        },
         GI = {
           fumaca: "nuvem densa que bloqueia a visão por 18s",
           he: "explosão: até 110 de dano e dissipa a fumaça por instantes",
@@ -5616,6 +5795,7 @@
           inc: "fogo por 7s: queima quem ficar dentro",
           barreira:
             "cria uma parede da cor do seu time por 18s; destrua-a com 300 de dano",
+          gelo: "cria uma área que deixa os inimigos lentos por 7s",
         };
       const CLASSIC_MODIFIERS = [
         ["normal", "Normal"],
@@ -5648,8 +5828,34 @@
       const BARRIER_TIME = 18,
         BARRIER_HP = 300,
         barriers = [];
+      const ICE_FIELD_RADIUS = 5.5,
+        ICE_FIELD_DURATION = 7,
+        ICE_FIELD_SLOW = 0.45;
+      function iceSlow(team, x, z) {
+        return iceFields.some(
+          (field) =>
+            field.team !== team &&
+            field.l > 0 &&
+            Math.hypot(field.x - x, field.z - z) < ICE_FIELD_RADIUS,
+        )
+          ? ICE_FIELD_SLOW
+          : 1;
+      }
+      function removeIceField(field) {
+        const i = iceFields.indexOf(field);
+        if (i < 0) return;
+        S.remove(field.g);
+        field.g.traverse((part) => {
+          if (part.geometry) part.geometry.dispose();
+          if (part.material) part.material.dispose();
+        });
+        iceFields.splice(i, 1);
+      }
+      function clearIceFields() {
+        iceFields.slice().forEach(removeIceField);
+      }
       let barrierSeq = 0;
-      const grenadeIds = ["fumaca", "he", "flash", "inc", "barreira"];
+      const grenadeIds = ["fumaca", "he", "flash", "inc", "barreira", "gelo"];
       function makeBarrier(d, notify = false) {
         if (
           !d ||
@@ -5793,6 +5999,50 @@
         S.add(g);
         fires.push({ x, z, l: 7, tk: 0, g, team, by });
       }
+      function mkIce(x, z, team) {
+        const g = new THREE.Group(),
+          floor = new THREE.Mesh(
+            new THREE.CircleGeometry(ICE_FIELD_RADIUS, 32),
+            M(0x73ddff, {
+              transparent: true,
+              opacity: 0.22,
+              depthWrite: false,
+            }),
+          ),
+          ring = new THREE.Mesh(
+            new THREE.TorusGeometry(ICE_FIELD_RADIUS - 0.12, 0.08, 8, 48),
+            M(0xb7f3ff, {
+              transparent: true,
+              opacity: 0.8,
+              depthWrite: false,
+            }),
+          );
+        g.position.set(x, 0, z);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0.05;
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.09;
+        g.add(floor, ring);
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2,
+            crystal = new THREE.Mesh(
+              new THREE.ConeGeometry(0.12, 0.38, 5),
+              M(0xd5faff, {
+                transparent: true,
+                opacity: 0.75,
+                depthWrite: false,
+              }),
+            );
+          crystal.position.set(
+            Math.cos(a) * (ICE_FIELD_RADIUS - 0.45),
+            0.19,
+            Math.sin(a) * (ICE_FIELD_RADIUS - 0.45),
+          );
+          g.add(crystal);
+        }
+        S.add(g);
+        iceFields.push({ x, z, team, l: ICE_FIELD_DURATION, g, floor, ring });
+      }
       function extinguishFires(p) {
         for (let i = fires.length - 1; i >= 0; i--) {
           const f = fires[i];
@@ -5918,6 +6168,9 @@
         } else if (id === "inc") {
           mkFire(p.x, p.z, team, by);
           playSfx("fire-ignite", 0.1, false, p);
+        } else if (id === "gelo") {
+          mkIce(p.x, p.z, team);
+          playSfx("grenade-flash", 0.12, false, p);
         } else if (
           id === "barreira" &&
           (!netOn() || !by || by.peer === myPeerId())
@@ -5937,6 +6190,7 @@
           flash: 0xfff6a0,
           inc: 0xff7a3c,
           barreira: 0xffffff,
+          gelo: 0x8be8ff,
         };
       function launch(mode) {
         const m = TM[mode],
@@ -6441,6 +6695,7 @@
         if (m === "classic" && !net) classicModifier = "normal";
         clearSprays();
         clearBarriers();
+        clearIceFields();
         hostNet = !!net;
         clearRem();
         clearDrops();
@@ -6905,19 +7160,44 @@
                 : tm === "T"
                   ? 0xff8a3d
                   : 0x2a5bd7),
-          body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 16), M(c)),
+          body = new THREE.Mesh(
+            BOT_BODY_GEOMETRY,
+            M(c, { transparent: true, opacity: 0.82, depthWrite: false }),
+          ),
           head = new THREE.Mesh(
             new THREE.SphereGeometry(0.22, 20, 14),
-            M(0xffffff),
+            M(0xffffff, {
+              transparent: true,
+              opacity: 0.82,
+              depthWrite: false,
+            }),
           ),
           vis = new THREE.Mesh(
             new THREE.SphereGeometry(0.15, 12, 10),
-            M(0x063a5c),
+            M(0x063a5c, {
+              transparent: true,
+              opacity: 0.82,
+              depthWrite: false,
+            }),
           ),
           ring = new THREE.Mesh(
             new THREE.TorusGeometry(0.42, 0.05, 8, 24),
-            new THREE.MeshBasicMaterial({ color: c }),
-          );
+            new THREE.MeshBasicMaterial({
+              color: c,
+              transparent: true,
+              opacity: 0.78,
+              depthWrite: false,
+            }),
+          ),
+          feet = [-1, 1].map((side) => {
+            const foot = new THREE.Mesh(
+              BOT_FOOT_GEOMETRY,
+              M(c, { transparent: true, opacity: 0.82, depthWrite: false }),
+            );
+            foot.scale.set(0.9, 1.3, 1.2);
+            foot.position.set(side * 0.2, 0.208, 0.12);
+            return foot;
+          });
         if (isClassicGame() && classicModifier === "bighead")
           head.scale.setScalar(2.5);
         body.position.y = 1;
@@ -6953,13 +7233,14 @@
         );
         bb.position.y = 1.2;
         bb.visible = false;
-        g.add(body, head, vis, ring, lb, bb);
+        g.add(body, head, vis, ring, ...feet, lb, bb);
         S.add(g);
         return {
           g,
           body,
           head,
           ring,
+          feet,
           lb,
           bb,
           n,
@@ -6999,12 +7280,13 @@
       }
       function startOnline() {
         clearBarriers();
+        clearIceFields();
         clearCTFFlags();
         dmEndT = soloDM && !ggOn && !ctfOn ? t + 600 : 0;
         ctfScore = { T: 0, CT: 0 };
         ctfCarry = false;
         ST = {};
-        GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0 };
+        GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0, gelo: 0 };
         arm = 0;
         ph = "live";
         rt = 9999;
@@ -7121,9 +7403,17 @@
           }
           r.g.visible = r.al;
           r.n = esc(q.n) || "Jogador";
+          const previousX = r.g.position.x,
+            previousZ = r.g.position.z;
           r.g.position.x += (q.x - r.g.position.x) * 0.35;
           r.g.position.z += (q.z - r.g.position.z) * 0.35;
           push(r.g.position, 0.55);
+          animateFeet(
+            r.feet,
+            Math.hypot(r.g.position.x - previousX, r.g.position.z - previousZ) >
+              0.001,
+            t * 9 + r.ix,
+          );
           r.g.position.y = Math.max(0, (+q.y || 1.7) - 1.7);
           r.g.rotation.y = (+q.ry || 0) + Math.PI;
         });
@@ -7828,6 +8118,17 @@
           loadouts,
           skins,
           equipped,
+          redeemedCodes: Array.isArray(data.redeemedCodes)
+            ? [
+                ...new Set(
+                  data.redeemedCodes.filter(
+                    (code) =>
+                      typeof code === "string" &&
+                      /^[A-Z0-9_-]{1,24}$/.test(code),
+                  ),
+                ),
+              ].slice(0, 100)
+            : [],
           cases:
             data.cases === undefined
               ? 1
@@ -8100,9 +8401,7 @@
         else if (cfgTab === 4)
           b =
             '<h4>Mapas</h4><button type="button" data-a="map-editor">CRIAR MAPA</button>' +
-            chk("ff", "Fogo amigo (tiros e utilitários afetam aliados)") +
-            spraySettings() +
-            '<h4>Conta local</h4><p>Apaga inventário, moedas, recorde e dados locais do perfil. Configurações e mapas criados serão preservados.</p><button type="button" class="cfg-reset-account" data-a="reset-account">RESETAR CONTA LOCAL</button>';
+            chk("ff", "Fogo amigo (tiros e utilitários afetam aliados)");
         else if (cfgTab === 5)
           b =
             '<h4>Perfil do jogador</h4><label>Nickname<input id="playerName" maxlength="12" value="' +
@@ -8126,7 +8425,9 @@
                 (index === myAv ? "#ffffff" : "transparent") +
                 '"></button>',
             ).join("") +
-            "</div>";
+            "</div>" +
+            spraySettings() +
+            '<h4>Conta local</h4><p>Apaga inventário, moedas, recorde e dados locais do perfil. Configurações e mapas criados serão preservados.</p><button type="button" class="cfg-reset-account" data-a="reset-account">RESETAR CONTA LOCAL</button>';
         else
           b =
             sl("sens", "Sensibilidade", 0.0008, 0.006, 0.0001) +
@@ -8814,6 +9115,7 @@
           flash: weaponSymbol("equipment-flash"),
           inc: weaponSymbol("equipment-inc"),
           barreira: weaponSymbol("equipment-barreira"),
+          gelo: '<svg viewBox="0 0 44 16" aria-hidden="true"><path d="M22 1v14m-5-12 10 10m0-10-10 10m-8-5h26m-17-4 2-3 2 3m8 0 2-3 2 3m-14 8 2 3 2-3m8 0 2 3 2-3"/></svg>',
         },
         killfeedIcon = (id, cls = "") =>
           '<img class="' +
@@ -9915,10 +10217,11 @@
       }
       function startGuest() {
         clearBarriers();
+        clearIceFields();
         bubbleReward = 0;
         guestSideState = null;
         ST = {};
-        GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0 };
+        GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0, gelo: 0 };
         grenadesBoughtThisRound = 0;
         arm = 0;
         ph = "freeze";
@@ -9947,6 +10250,7 @@
       function guestRound(nr) {
         grenadesBoughtThisRound = 0;
         clearBarriers();
+        clearIceFields();
         bubbleReward = 0;
         PB = [];
         roundElims = Object.create(null);
@@ -9967,7 +10271,7 @@
           ammo = WP[wk].mag;
           reloading = false;
           arm = 0;
-          GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0 };
+          GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0, gelo: 0 };
           diedLast = false;
           setGun();
         }
@@ -10074,9 +10378,17 @@
           o.n = String(a[6]);
           o.mn = +a[7] || 0;
           o.lb.visible = !ggOn && o.tm === myTeam;
+          const previousX = o.g.position.x,
+            previousZ = o.g.position.z;
           o.g.position.x += (a[1] - o.g.position.x) * 0.4;
           o.g.position.z += (a[2] - o.g.position.z) * 0.4;
           push(o.g.position, 0.6);
+          animateFeet(
+            o.feet,
+            Math.hypot(o.g.position.x - previousX, o.g.position.z - previousZ) >
+              0.001,
+            t * 9 + (+a[0] || 0),
+          );
           o.g.rotation.y = a[3];
         });
         Object.keys(rb).forEach((id) => {
@@ -10487,7 +10799,7 @@
         reloading = false;
         scoped = false;
         arm = 0;
-        GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0 };
+        GN = { fumaca: 0, he: 0, flash: 0, inc: 0, barreira: 0, gelo: 0 };
         kit = false;
         setGun();
       }
@@ -11353,7 +11665,10 @@
         }
       }
       // códigos promocionais (loja)
-      const PROMO_CODES = { TTT: { collection: "triple-t" } };
+      const PROMO_CODES = {
+        TTT: { collection: "triple-t" },
+        CATACLYSM: { cases: 1 },
+      };
       let promoMsg = "";
       function promoHTML() {
         const m = promoMsg;
@@ -11378,6 +11693,31 @@
           renderInventory();
           return;
         }
+        if (accountInv.redeemedCodes.includes(code)) {
+          promoMsg = "Código já resgatado.";
+          renderInventory();
+          return;
+        }
+        if (promo.cases) {
+          if (accountInv.cases >= 999) {
+            promoMsg = "Limite de caixas atingido.";
+            renderInventory();
+            return;
+          }
+          const previousCases = accountInv.cases,
+            previousCodes = accountInv.redeemedCodes.length;
+          accountInv.cases += promo.cases;
+          accountInv.redeemedCodes.push(code);
+          if (!saveInventory()) {
+            accountInv.cases = previousCases;
+            accountInv.redeemedCodes.length = previousCodes;
+            renderInventory();
+            return;
+          }
+          promoMsg = "Código resgatado! Você ganhou uma caixa Operação: Cataclysm.";
+          renderInventory();
+          return;
+        }
         const col = CASE_COLLECTIONS.find((c) => c.id === promo.collection),
           fresh = col.items.filter(
             (i) =>
@@ -11396,7 +11736,8 @@
           renderInventory();
           return;
         }
-        const before = accountInv.skins.length;
+        const before = accountInv.skins.length,
+          previousCodes = accountInv.redeemedCodes.length;
         fresh.forEach((i) =>
           accountInv.skins.push({
             uid:
@@ -11405,8 +11746,10 @@
             skin: i[0],
           }),
         );
+        accountInv.redeemedCodes.push(code);
         if (!saveInventory()) {
           accountInv.skins.length = before;
+          accountInv.redeemedCodes.length = previousCodes;
           renderInventory();
           return;
         }
@@ -12018,12 +12361,15 @@
           700,
         );
         playSfx("bubble-pop", 0.4, false, p);
-        const H = MI.N * 1.8;
-        m.position.set(
-          (Math.random() - 0.5) * 2 * H,
-          0,
-          (Math.random() - 0.5) * 2 * H,
-        );
+        if (m.userData.deathBubble) removeBubble(m);
+        else {
+          const H = MI.N * 1.8;
+          m.position.set(
+            (Math.random() - 0.5) * 2 * H,
+            0,
+            (Math.random() - 0.5) * 2 * H,
+          );
+        }
       }
       function spotTick() {
         const V = [],
@@ -12097,12 +12443,7 @@
         if (state === "play") {
           t += dt;
           update(dt);
-        } else {
-          for (const b of bub) {
-            b.position.y += dt * b.userData.s;
-            if (b.position.y > 25) b.position.y = 0;
-          }
-        }
+        } else updateBubbles(dt);
         R.render(S, cam);
       }
       requestAnimationFrame(loop);
