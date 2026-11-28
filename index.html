@@ -1976,6 +1976,18 @@
         background: rgba(6, 40, 70, 0.55);
         z-index: 1;
       }
+      #teamPick #teamSpectate {
+        position: absolute;
+        top: calc(7% + 94px);
+        left: 50%;
+        z-index: 2;
+        transform: translateX(-50%);
+        padding: 8px 18px;
+        border-radius: 6px;
+        background: rgba(6, 40, 70, 0.72);
+        font-size: 12px;
+        letter-spacing: 1px;
+      }
       #lbt .nav-icon {
         padding: 0;
         border: 0;
@@ -2230,6 +2242,161 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
         gap: 10px;
+      }
+      .inv-skin-catalog {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .inv-skin-group {
+        min-width: 0;
+        padding: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 8px;
+        background: rgba(0, 20, 44, 0.3);
+      }
+      .inv-skin-group h3 {
+        margin: 0 0 7px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+        font-size: 11px;
+        letter-spacing: 1px;
+      }
+      .inv-skin-targets {
+        display: grid;
+        gap: 4px;
+      }
+      .inv-skin-target {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        width: 100%;
+        min-width: 0;
+        padding: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.2);
+        color: #fff;
+        text-align: left;
+        cursor: pointer;
+      }
+      .inv-skin-target:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .inv-skin-target.selected {
+        border-color: #7dff5a;
+        background: rgba(45, 115, 67, 0.4);
+        box-shadow: inset 0 0 0 1px #7dff5a;
+      }
+      .inv-skin-target-icon {
+        display: grid;
+        flex: 0 0 32px;
+        width: 32px;
+        height: 18px;
+        place-items: center;
+      }
+      .inv-skin-target-icon img,
+      .inv-skin-target-icon svg {
+        display: block;
+        max-width: 32px;
+        height: 18px;
+        object-fit: contain;
+        filter: brightness(0) saturate(100%) invert(89%) sepia(10%)
+          saturate(1510%) hue-rotate(174deg) brightness(100%) contrast(102%);
+      }
+      .inv-agent-icon {
+        width: 19px;
+        height: 19px;
+        fill: #ff8a3d;
+        filter: none !important;
+      }
+      .inv-agent-icon.ct {
+        fill: #48c8ff;
+      }
+      .inv-skin-target-name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        font-size: 10px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .inv-skin-count {
+        color: #b7d9ee;
+        font-size: 9px;
+      }
+      .inv-skin-detail {
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 8px;
+        background: rgba(0, 20, 44, 0.3);
+      }
+      .inv-skin-detail-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+      }
+      .inv-skin-back {
+        flex: none;
+        margin-left: auto;
+        padding: 7px 12px;
+        border-radius: 5px;
+        font-size: 10px;
+        letter-spacing: 1px;
+      }
+      .inv-skin-detail-icon {
+        display: grid;
+        flex: 0 0 96px;
+        width: 96px;
+        height: 58px;
+        place-items: center;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.22);
+      }
+      .inv-skin-detail-icon img,
+      .inv-skin-detail-icon svg {
+        max-width: 76px;
+        max-height: 42px;
+        object-fit: contain;
+        filter: brightness(0) saturate(100%) invert(89%) sepia(10%)
+          saturate(1510%) hue-rotate(174deg) brightness(100%) contrast(102%);
+      }
+      .inv-skin-detail-icon .inv-agent-icon {
+        width: 38px;
+        height: 38px;
+      }
+      .inv-skin-detail-head small {
+        opacity: 0.72;
+        font-size: 10px;
+        letter-spacing: 1px;
+      }
+      .inv-skin-detail-head h3 {
+        margin: 3px 0;
+        font-size: 18px;
+      }
+      .inv-skin-detail-head p {
+        margin: 0;
+        font-size: 12px;
+        opacity: 0.82;
+      }
+      .inv-skin-owned {
+        margin-top: 12px;
+      }
+      .inv-skin-owned h4 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        letter-spacing: 1px;
+      }
+      .inv-skin-empty {
+        padding: 12px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.18);
+        font-size: 12px;
+        opacity: 0.78;
       }
       .inv-skin,
       .inv-drop {
@@ -2584,6 +2751,12 @@
         .inv-shell {
           padding: 10px;
         }
+        .inv-skin-catalog {
+          grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+        }
+        .inv-skin-detail {
+          padding: 8px;
+        }
         .inv-loadouts {
           grid-template-columns: 1fr;
         }
@@ -2929,6 +3102,7 @@
         <span><b>TR</b><small>TERRORISTAS</small></span>
       </button>
       <button id="teamBack">VOLTAR</button>
+      <button id="teamSpectate" hidden>ASSISTIR PARTIDA</button>
     </div>
     <div id="ed" class="glass">
       <b>CRIAR MAPA</b><br /><small
@@ -6556,7 +6730,10 @@
       const knifeG = new THREE.Group(),
         knifeBladeG = new THREE.Group(),
         batG = new THREE.Group(),
+        batFallback = new THREE.Group(),
+        batModelHolder = new THREE.Group(),
         kb = new THREE.Shape();
+      batG.add(batFallback, batModelHolder);
       kb.moveTo(0, 0);
       kb.bezierCurveTo(0, 0.14, -0.1, 0.21, -0.2, 0.1);
       kb.bezierCurveTo(-0.12, 0.15, -0.04, 0.1, -0.03, 0);
@@ -6650,11 +6827,41 @@
         knob.position.set(-0.09, -0.39, 0.01);
         band.position.set(-0.09, -0.2, 0.01);
         logoBand.position.set(-0.09, 0.29, 0.01);
-        batG.add(barrel, grip, knob, band, logoBand);
-        batG.rotation.z = 0.2;
+        batFallback.add(barrel, grip, knob, band, logoBand);
+        batG.rotation.z = -0.35;
         batG.visible = false;
         knifeG.add(knifeBladeG, batG);
       }
+      new THREE.GLTFLoader().load(
+        "models/guns/knifes/baseball_bat.glb",
+        ({ scene }) => {
+          const bounds = new THREE.Box3().setFromObject(scene),
+            size = bounds.getSize(new THREE.Vector3()),
+            center = bounds.getCenter(new THREE.Vector3()),
+            longest = Math.max(size.x, size.y, size.z),
+            model = new THREE.Group();
+          scene.position.sub(center);
+          if (size.z >= size.x && size.z >= size.y)
+            model.rotation.x = -Math.PI / 2;
+          else if (size.x > size.y && size.x >= size.z)
+            model.rotation.z = Math.PI / 2;
+          model.scale.setScalar(0.72 / longest);
+          scene.traverse((part) => {
+            if (part.isMesh) {
+              part.castShadow = true;
+              part.frustumCulled = false;
+            }
+          });
+          model.add(scene);
+          model.position.set(-0.09, 0.02, 0.01);
+          batModelHolder.add(model);
+          batFallback.visible = false;
+          batModelHolder.visible = true;
+        },
+        undefined,
+        (error) =>
+          console.error("Falha ao carregar o modelo do taco de beisebol:", error),
+      );
       knifeG.scale.setScalar(1.7);
       knifeG.visible = false;
       cam.add(knifeG);
@@ -6952,6 +7159,7 @@
       }
       function toMenu() {
         pauseUI = false;
+        spectator = false;
         state = "menu";
         hostNet = false;
         waitingSides = false;
@@ -6970,6 +7178,7 @@
             rs: null,
             bs: null,
             tmReady: 0,
+            spec: 0,
           });
         document.exitPointerLock && document.exitPointerLock();
         showMenu();
@@ -7576,6 +7785,7 @@
               w: wk,
               n: myName,
               tm: myTeam,
+              spec: spectator ? 1 : 0,
               ag: equippedAgentSkin(myTeam),
               sd: stepN,
               mn: Math.round(money),
@@ -7928,16 +8138,41 @@
         showMenu();
       }
       let pendingTeamMap = null,
-        pendingTeamStart = null;
-      function showTeamPick(g, onPick) {
+        pendingTeamStart = null,
+        pendingSpectateAllowed = false;
+      function showTeamPick(g, onPick, allowSpectate = false) {
         pendingTeamMap = g;
         pendingTeamStart = onPick || null;
+        pendingSpectateAllowed = allowSpectate;
+        $("teamSpectate").hidden = !allowSpectate;
         $("lb").classList.remove("show");
         $("ed").style.display = "none";
         $("teamPick").classList.add("show");
       }
       $("teamPick").addEventListener("click", (e) => {
         const team = e.target.closest("[data-team]");
+        if (
+          e.target.closest("#teamSpectate") &&
+          pendingSpectateAllowed &&
+          room &&
+          !amHost
+        ) {
+          const g = pendingTeamMap;
+          $("teamPick").classList.remove("show");
+          pendingTeamMap = null;
+          pendingTeamStart = null;
+          pendingSpectateAllowed = false;
+          spectator = true;
+          specI = 0;
+          scp.set(0, 0, 0);
+          room.presence({ spec: 1, tmReady: 0 });
+          begin("cnet", g);
+          alive = false;
+          hp = 0;
+          gun.visible = false;
+          room.presence({ spec: 1, tmReady: 0, al: 0, m: 1 });
+          return;
+        }
         if (team) {
           myTeam = team.dataset.team;
           const g = pendingTeamMap,
@@ -7945,6 +8180,9 @@
           $("teamPick").classList.remove("show");
           pendingTeamMap = null;
           pendingTeamStart = null;
+          pendingSpectateAllowed = false;
+          spectator = false;
+          room && room.presence({ spec: 0 });
           if (onPick) onPick(myTeam, g);
           else begin("classic", g);
         }
@@ -7953,6 +8191,7 @@
         $("teamPick").classList.remove("show");
         pendingTeamMap = null;
         pendingTeamStart = null;
+        pendingSpectateAllowed = false;
         showMenu();
       };
       function startBtn() {
@@ -7999,6 +8238,8 @@
             peers = true;
           if (gm === "classic") {
             showTeamPick(g, (team, map) => {
+              spectator = false;
+              room.presence({ spec: 0 });
               setTeam(team, true);
               const go = Date.now();
               room.presence({ go, gm, mp: maps()[mi].n, mod: classicModifier });
@@ -8392,6 +8633,7 @@
       let accountInv = readInventory(),
         inventoryTab = "loadout",
         inventoryTeam = "CT",
+        inventorySkinSelection = "",
         inventoryNotice = "",
         matchRewarded = false,
         caseOpening = false;
@@ -9432,18 +9674,110 @@
       function caseArtHTML() {
         return '<div class="inv-case-art"><img src="img/emblema%20opera%C3%A7%C3%A3o%20cataclysm.png" alt="Emblema da Operação: Cataclysm"></div>';
       }
+      function inventorySkinGroups() {
+        return [
+          { name: "PISTOLAS", items: W.filter((w) => w.c === 1) },
+          { name: "SMGS", items: W.filter((w) => w.c === 2) },
+          {
+            name: "RIFLES",
+            items: W.filter((w) => w.c === 3 || w.c === 4),
+          },
+          { name: "PESADAS", items: W.filter((w) => w.c === 5) },
+          { name: "FACA", items: W.filter((w) => w.kn) },
+          { name: "JOGADORES", items: ["agentCT", "agentT"] },
+        ];
+      }
+      function inventorySkinTargetName(target) {
+        return WP[target]
+          ? WP[target].n
+          : target === "agentCT"
+            ? "Agente CT"
+            : "Agente TR";
+      }
+      function inventorySkinTargetIcon(target) {
+        if (WP[target]) return wico(WP[target]);
+        const team = target === "agentCT" ? "ct" : "tr";
+        return (
+          '<svg class="inv-agent-icon ' +
+          team +
+          '" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M4 22v-3a8 8 0 0 1 16 0v3z"></path></svg>'
+        );
+      }
+      function inventorySkinTargetDescription(target) {
+        if (target === "agentCT")
+          return "Visual cosmético aplicado ao personagem do lado Contra-Terrorista.";
+        if (target === "agentT")
+          return "Visual cosmético aplicado ao personagem do lado Terrorista.";
+        const weapon = WP[target];
+        if (weapon.gr)
+          return GI[weapon.id] || "Equipamento tático disponível durante a partida.";
+        if (weapon.kn)
+          return "Arma corpo a corpo · dano " + weapon.d + " por golpe.";
+        return (
+          "Dano " +
+          weapon.d +
+          (weapon.p ? " ×" + weapon.p : "") +
+          " · " +
+          Math.round(10 / weapon.r) / 10 +
+          " tiros/s · pente " +
+          weapon.mag +
+          " · dificuldade " +
+          (weapon.k < 0.7 ? "★☆☆" : weapon.k < 1.2 ? "★★☆" : "★★★")
+        );
+      }
       function inventorySkinsHTML() {
-        const cards = accountInv.skins
-          .map((s) => {
+        const toolbar =
+            '<div class="inv-toolbar"><div><b>SKINS DA CONTA</b><br><small>Selecione uma arma ou jogador para consultar e equipar os visuais desbloqueados.</small></div><span class="inv-note">' +
+            accountInv.skins.length +
+            " item(ns)</span></div>",
+          footer =
+            '<div class="inv-footer"><span class="inv-note">Skins e loadouts ficam salvos neste navegador.</span><span class="inv-note">' +
+            inventoryNotice +
+            "</span></div>";
+        if (!inventorySkinSelection) {
+          const groups = inventorySkinGroups()
+            .map(
+              (group) =>
+                '<section class="inv-skin-group"><h3>' +
+                group.name +
+                '</h3><div class="inv-skin-targets">' +
+                group.items
+                  .map((item) => {
+                    const id = typeof item === "string" ? item : item.id,
+                      itemName = inventorySkinTargetName(id),
+                      count = accountInv.skins.filter(
+                        (skin) => skin.weapon === id,
+                      ).length;
+                    return (
+                      '<button type="button" class="inv-skin-target" data-skin-target="' +
+                      id +
+                      '"><span class="inv-skin-target-icon">' +
+                      inventorySkinTargetIcon(id) +
+                      '</span><span class="inv-skin-target-name">' +
+                      itemName +
+                      '</span><small class="inv-skin-count">' +
+                      count +
+                      "</small></button>"
+                    );
+                  })
+                  .join("") +
+                "</div></section>",
+            )
+            .join("");
+          return (
+            toolbar +
+            '<div class="inv-skin-catalog">' +
+            groups +
+            "</div>" +
+            footer
+          );
+        }
+        const target = inventorySkinSelection,
+          name = inventorySkinTargetName(target),
+          weaponSkins = accountInv.skins.filter((s) => s.weapon === target),
+          cards = weaponSkins
+            .map((s) => {
             const def = skinDefinition(s.skin),
-              w = WP[s.weapon],
-              slot = w
-                ? w.n
-                : s.weapon === "agentCT"
-                  ? "Agente CT"
-                  : s.weapon === "agentT"
-                    ? "Agente TR"
-                    : "Faca",
               active = accountInv.equipped[s.weapon] === s.uid;
             return (
               '<article class="inv-skin"><div class="inv-swatch ' +
@@ -9455,7 +9789,7 @@
               '"></div><b>' +
               def.name +
               "</b><br><small>" +
-              slot +
+              def.collectionName +
               " · " +
               def.rarity +
               '</small><button type="button" ' +
@@ -9466,18 +9800,24 @@
               (active ? "DESEQUIPAR" : "EQUIPAR") +
               "</button></article>"
             );
-          })
-          .join("");
+            })
+            .join("");
         return (
-          '<div class="inv-toolbar"><div><b>SKINS DA CONTA</b><br><small>Armas usam padrões da coleção; camisas ficam associadas ao lado CT/TR.</small></div><span class="inv-note">' +
-          accountInv.skins.length +
-          " item(ns)</span></div>" +
+          toolbar +
+          '<section class="inv-skin-detail"><div class="inv-skin-detail-head"><div class="inv-skin-detail-icon">' +
+          inventorySkinTargetIcon(target) +
+          "</div><div><small>ITEM SELECIONADO</small><h3>" +
+          name +
+          "</h3><p>" +
+          inventorySkinTargetDescription(target) +
+          '</p></div><button type="button" class="inv-skin-back" data-skin-back>VOLTAR</button></div><div class="inv-skin-owned"><h4>SKINS DESBLOQUEADAS · ' +
+          weaponSkins.length +
+          "</h4>" +
           (cards
             ? '<div class="inv-skins">' + cards + "</div>"
-            : '<div class="inv-note">Ainda não há skins. Compre a Operação: Cataclysm na aba LOJA DE CAIXAS.</div>') +
-          '<div class="inv-footer"><span class="inv-note">Skins e loadouts ficam salvos neste navegador.</span><span class="inv-note">' +
-          inventoryNotice +
-          "</span></div>"
+            : '<div class="inv-skin-empty">Você ainda não desbloqueou skins para este item.</div>') +
+          "</div></section>" +
+          footer
         );
       }
       function caseOpeningHTML() {
@@ -9861,6 +10201,8 @@
       $("inventoryScreen").addEventListener("click", (e) => {
         const tab = e.target.closest("[data-inv-tab]"),
           team = e.target.closest("[data-inv-team]"),
+          skinBack = e.target.closest("[data-skin-back]"),
+          skinTarget = e.target.closest("[data-skin-target]"),
           item = e.target.closest("[data-loadout-id]"),
           skin = e.target.closest("[data-equip-skin]"),
           unequip = e.target.closest("[data-unequip-skin]"),
@@ -9873,6 +10215,14 @@
           renderInventory();
         } else if (team) {
           inventoryTeam = team.dataset.invTeam;
+          inventoryNotice = "";
+          renderInventory();
+        } else if (skinBack) {
+          inventorySkinSelection = "";
+          inventoryNotice = "";
+          renderInventory();
+        } else if (skinTarget) {
+          inventorySkinSelection = skinTarget.dataset.skinTarget;
           inventoryNotice = "";
           renderInventory();
         } else if (item) toggleLoadoutItem(item.dataset.loadoutId);
@@ -10316,6 +10666,7 @@
               (p) =>
                 p.sameTab ||
                 !p.presence.rdy ||
+                p.presence.spec ||
                 (p.presence.tmReady && ["T", "CT"].includes(p.presence.tm)),
             )
         );
@@ -10513,6 +10864,11 @@
           diedLast = false;
           setGun();
         }
+        if (spectator) {
+          alive = false;
+          hp = 0;
+          gun.visible = false;
+        }
         banner(
           (cgm === "surv" ? "ONDA " : "RODADA ") + nr + " — COMPRE! [B]",
           2000,
@@ -10678,10 +11034,12 @@
         } else if (q.gm === "classic") {
           cgm = q.gm;
           showTeamPick(g, (team) => {
+            spectator = false;
+            room && room.presence({ spec: 0 });
             setTeam(team, true);
             guestInitialTeam = team;
             begin("cnet", g);
-          });
+          }, true);
         } else {
           cgm = q.gm;
           begin("cnet", g);
