@@ -2194,9 +2194,17 @@
       }
       .inv-item img {
         display: block;
-        width: 100%;
+        width: 86%;
         height: 28px;
+        margin: 0 auto;
+        object-fit: contain;
         filter: brightness(0) saturate(100%) invert(89%) sepia(10%) saturate(1510%) hue-rotate(174deg) brightness(100%) contrast(102%);
+      }
+      .inv-item svg {
+        display: block;
+        width: 86%;
+        height: 28px;
+        margin: 0 auto;
       }
       .inv-item small {
         font-size: 9px;
@@ -3069,6 +3077,7 @@
       const K = 1.6,
         OB = [],
         solid = [];
+      let trainingScenery = null;
       function box(x, z, w, d, h, c, glass, yaw = 0) {
         const m = new THREE.Mesh(
           new THREE.BoxGeometry(w, h, d),
@@ -3098,6 +3107,20 @@
           hd: d,
           yaw,
         });
+        solid.push(m);
+      }
+      function hiddenBox(x, z, w, d, h) {
+        const m = new THREE.Mesh(
+          new THREE.BoxGeometry(w, h, d),
+          new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+          }),
+        );
+        m.position.set(x, h / 2, z);
+        S.add(m);
+        OB.push({ x, z, w, d, hw: w, hd: d, yaw: 0 });
         solid.push(m);
       }
       [
@@ -4318,7 +4341,7 @@
           );
         }
         ctfTick();
-        if (mode === "cnet") applyHost();
+        if (mode === "cnet") applyHost(dt);
         if (hostNet && mode === "classic" && waitingSides) {
           if (classicSidesReady()) {
             waitingSides = false;
@@ -4398,7 +4421,7 @@
             (crouch ? 0.45 : 1) *
             (w.pm || PMC[w.c]) *
             (scoped ? 0.6 : 1) *
-            iceSlow(myTeam, pos.x, pos.z),
+            iceSlow(pos.x, pos.z),
           vx = planting
             ? 0
             : ((-Math.sin(yaw) * f + Math.cos(yaw) * s) / l) * spd,
@@ -4423,7 +4446,14 @@
           if (loud && stepT <= 0) {
             stepT = 0.36;
             stepN++;
-            playSfx("footstep", 0.1, true, null, 0.9 + Math.random() * 0.2);
+            const onIce = inIceField(pos.x, pos.z);
+            playSfx(
+              onIce ? "ice-footstep" : "footstep",
+              onIce ? 0.13 : 0.1,
+              true,
+              null,
+              onIce ? 1 : 0.9 + Math.random() * 0.2,
+            );
             if (mode !== "online")
               bots.forEach((b) => {
                 if (
@@ -4739,7 +4769,7 @@
               }
             }
             const sp2 = stepTo(g.position, b.tx, b.tz),
-              slow = iceSlow(b.team, g.position.x, g.position.z),
+              slow = iceSlow(g.position.x, g.position.z),
               ex = sp2[0] - g.position.x,
               ez = sp2[1] - g.position.z,
               ed = Math.hypot(b.tx - g.position.x, b.tz - g.position.z),
@@ -4785,12 +4815,15 @@
               if (b.pp >= 1) doPlant(tS.x, tS.z);
             } else b.pp = 0;
             push(g.position, 0.8);
+            const walking =
+              Math.hypot(g.position.x - previousX, g.position.z - previousZ) >
+              0.001;
             animateFeet(
               b.feet,
-              Math.hypot(g.position.x - previousX, g.position.z - previousZ) >
-                0.001,
+              walking,
               t * 9 + b.ph,
             );
+            playIceFootstep(b, g.position, walking, dt);
             g.position.y = Math.sin(t * 2 + b.ph) * 0.12;
             if (b.fl > 0) {
               b.fl -= dt;
@@ -4993,7 +5026,11 @@
         $("en").textContent =
           mode === "online" || mode === "cnet"
             ? soloDM
-              ? "Bots: " + bots.length
+              ? "Bots: " +
+                bots.filter((bot) => bot.team === myTeam).length +
+                " aliados · " +
+                bots.filter((bot) => bot.team !== myTeam).length +
+                " adversários"
               : "Sala " +
                 roomCode +
                 " · " +
@@ -5083,6 +5120,15 @@
         "........................",
         "........................",
       ];
+      const TRAINING_MAP = Array.from({ length: 24 }, () => ".".repeat(24));
+      TRAINING_MAP.meta = {
+        N: 24,
+        T: [0, 38],
+        C: [0, 10],
+        A: [20, -30],
+        B: [-20, -30],
+        tp: [],
+      };
       let G = [],
         DF = new Map(),
         inv = { p: null, s: "rolha" },
@@ -5131,10 +5177,12 @@
           [0, 1],
           [0, -1],
         ];
-      const weaponSymbol = (id) =>
+      const weaponSymbol = (id, fallback = "class-0") =>
           '<img src="img/icons/weapons/' +
           id +
-          '.webp" alt="" aria-hidden="true" onerror="this.onerror=null;this.src=\'img/icons/weapons/class-0.webp\'">',
+          '.webp" alt="" aria-hidden="true" onerror="this.onerror=null;this.src=\'img/icons/weapons/' +
+          fallback +
+          '.webp\'">',
         ico = (c) => weaponSymbol("class-" + c);
       function buildMap(g) {
         G = g;
@@ -5146,18 +5194,33 @@
           B: [-38, -30],
           tp: [],
         };
+        if (trainingScenery) {
+          S.remove(trainingScenery);
+          trainingScenery.traverse((part) => {
+            if (part.geometry) part.geometry.dispose();
+            if (Array.isArray(part.material))
+              part.material.forEach((material) => material.dispose());
+            else if (part.material) part.material.dispose();
+          });
+          trainingScenery = null;
+        }
         const N = MI.N,
           H = N * 2;
         DF.clear();
         solid.forEach((m) => S.remove(m));
         solid.length = 0;
         OB.length = 0;
-        [
+        const boundaries = [
           [0, -H - 1, N * 4 + 2, 2],
           [0, H + 1, N * 4 + 2, 2],
           [-H - 1, 0, 2, N * 4 + 2],
           [H + 1, 0, 2, N * 4 + 2],
-        ].forEach((a) => box(a[0], a[1], a[2], a[3], 5, 0x9be7ff, 1));
+        ];
+        boundaries.forEach((a) =>
+          g === TRAINING_MAP
+            ? hiddenBox(a[0], a[1], a[2], a[3], 5)
+            : box(a[0], a[1], a[2], a[3], 5, 0x9be7ff, 1),
+        );
         g.forEach((row, r) => {
           let c = 0;
           while (c < N) {
@@ -5188,6 +5251,8 @@
           if (q.r) {
             q.r.position.set(q.x, 0.1, q.z);
             q.sp.position.set(q.x, 3.5, q.z);
+            q.r.visible = mode !== "train";
+            q.sp.visible = mode !== "train";
           }
         });
         tpM.forEach((m) => S.remove(m));
@@ -5207,6 +5272,145 @@
             tpM.push(m);
           });
         });
+        if (g === TRAINING_MAP) buildTrainingRange();
+      }
+      function buildTrainingRange() {
+        trainingScenery = new THREE.Group();
+        const mesh = (geometry, material, x, y, z) => {
+            const part = new THREE.Mesh(geometry, material);
+            part.position.set(x, y, z);
+            trainingScenery.add(part);
+            return part;
+          },
+          tree = (x, z, scale) => {
+            const group = new THREE.Group(),
+              trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.18, 0.34, 3.2, 6),
+                M(0x765034),
+              ),
+              lower = new THREE.Mesh(
+                new THREE.ConeGeometry(1.7, 2.7, 6),
+                M(0x317d43),
+              ),
+              upper = new THREE.Mesh(
+                new THREE.ConeGeometry(1.2, 2.5, 6),
+                M(0x4c9a50),
+              );
+            trunk.position.y = 1.6;
+            lower.position.y = 3.1;
+            upper.position.y = 4.5;
+            group.add(trunk, lower, upper);
+            group.position.set(x, 0, z);
+            group.scale.setScalar(scale);
+            trainingScenery.add(group);
+          },
+          field = mesh(
+            new THREE.PlaneGeometry(110, 90),
+            M(0x699a45, { side: THREE.DoubleSide }),
+            0,
+            0.015,
+            -10,
+          ),
+          lane = mesh(
+            new THREE.PlaneGeometry(9, 78),
+            M(0xb3a47c, { side: THREE.DoubleSide }),
+            0,
+            0.025,
+            -1,
+          ),
+          hillMaterial = M(0x547d42);
+        field.rotation.x = lane.rotation.x = -Math.PI / 2;
+        [
+          [-25, 2, -44, 18, 8, 11],
+          [0, 1, -48, 21, 7, 9],
+          [25, 3, -43, 19, 9, 12],
+        ].forEach(([x, y, z, sx, sy, sz]) => {
+          const hill = mesh(
+            new THREE.SphereGeometry(1, 10, 7),
+            hillMaterial,
+            x,
+            y,
+            z,
+          );
+          hill.scale.set(sx, sy, sz);
+        });
+        [
+          [-20, -14, 1.1],
+          [-15, -25, 0.85],
+          [-30, -31, 1.15],
+          [-22, -39, 0.9],
+          [20, -16, 1],
+          [15, -28, 1.15],
+          [29, -35, 0.95],
+          [22, -41, 1.1],
+        ].forEach(([x, z, scale]) => tree(x, z, scale));
+        const grass = new THREE.ConeGeometry(0.11, 0.42, 3),
+          grassMaterials = [M(0x77ae45), M(0x8dbb50), M(0x62983d)];
+        for (let i = 0; i < 80; i++) {
+          const x = (Math.random() - 0.5) * 70,
+            z = -9 - Math.random() * 35;
+          if (Math.abs(x) < 5) continue;
+          const blade = mesh(
+            grass,
+            grassMaterials[i % grassMaterials.length],
+            x,
+            0.2,
+            z,
+          );
+          blade.rotation.y = Math.random() * Math.PI;
+        }
+        const targetFrame = M(0x493a2a),
+          targetFrameZ = MI.C[1] - 0.7;
+        [-0.95, 0.95].forEach((x) =>
+          mesh(
+            new THREE.BoxGeometry(0.12, 2.45, 0.16),
+            targetFrame,
+            x,
+            1.225,
+            targetFrameZ,
+          ),
+        );
+        mesh(
+          new THREE.BoxGeometry(2.02, 0.14, 0.16),
+          targetFrame,
+          0,
+          2.4,
+          targetFrameZ,
+        );
+        mesh(
+          new THREE.BoxGeometry(2.02, 0.14, 0.16),
+          targetFrame,
+          0,
+          0.16,
+          targetFrameZ,
+        );
+        mesh(
+          new THREE.TorusGeometry(0.9, 0.055, 8, 32),
+          new THREE.MeshBasicMaterial({ color: 0xffd23f }),
+          0,
+          1.15,
+          targetFrameZ - 0.12,
+        );
+        S.add(trainingScenery);
+        mesh(
+          new THREE.BoxGeometry(3.8, 0.16, 1.1),
+          M(0x805331),
+          0,
+          1.05,
+          33.5,
+        );
+        [-1.6, 1.6].forEach((x) =>
+          [-0.4, 0.4].forEach((z) =>
+            mesh(
+              new THREE.BoxGeometry(0.14, 1, 0.14),
+              M(0x684329),
+              x,
+              0.5,
+              33.5 + z,
+            ),
+          ),
+        );
+        hiddenBox(0, 33.5, 3.8, 1.1, 1.1);
       }
       function dfield(c0, r0) {
         const N = MI.N,
@@ -5341,16 +5545,14 @@
         nm = 0;
         carrier = null;
         ROS = [{ name: "Você", team: myTeam }];
-        for (let i = 0; i < 5; i++) {
-          const [x, z] = classicBotSpawn("CT", i, false);
-          mkBot(x, z, "CT", 0, 0);
-          const b = bots[bots.length - 1];
-          b.name = "Dummy " + (i + 1);
-          b.dummy = true;
-          b.spawnX = x;
-          b.spawnZ = z;
-          ROS[ROS.length - 1] = { name: b.name, team: b.team, tm: b.team };
-        }
+        const [x, z] = MI.C;
+        mkBot(x, z, "CT", 0, 0);
+        const b = bots[bots.length - 1];
+        b.name = "Dummy";
+        b.dummy = true;
+        b.spawnX = x;
+        b.spawnZ = z;
+        ROS[ROS.length - 1] = { name: b.name, team: b.team, tm: b.team };
       }
       let bst = 0,
         rz = false,
@@ -5416,7 +5618,16 @@
         const b = $("sb");
         b.style.display = on ? "block" : "none";
         if (!on) return;
-        const al = (n) =>
+        const roster =
+            soloDM && !ggOn
+              ? [{ name: "Você", team: myTeam }].concat(
+                  bots.map((bot) => ({ name: bot.name, team: bot.team })),
+                  Object.values(rem)
+                    .filter((player) => player.al)
+                    .map((player) => ({ name: player.n, team: player.tm })),
+                )
+              : ROS,
+          al = (n) =>
             n === "Você"
               ? alive
               : bots.some((x) => x.name === n) ||
@@ -5456,7 +5667,7 @@
             "</b><span>" +
             (t === "T" ? "TERRORISTAS" : "CONTRA-TERRORISTAS") +
             "</span></div>" +
-            ROS.filter((r) => r.team === t)
+            roster.filter((r) => r.team === t)
               .slice(0, 10)
               .map(row)
               .join("");
@@ -5795,7 +6006,7 @@
           inc: "fogo por 7s: queima quem ficar dentro",
           barreira:
             "cria uma parede da cor do seu time por 18s; destrua-a com 300 de dano",
-          gelo: "cria uma área que deixa os inimigos lentos por 7s",
+          gelo: "desacelera quem passar pela área por 7s",
         };
       const CLASSIC_MODIFIERS = [
         ["normal", "Normal"],
@@ -5831,15 +6042,32 @@
       const ICE_FIELD_RADIUS = 5.5,
         ICE_FIELD_DURATION = 7,
         ICE_FIELD_SLOW = 0.45;
-      function iceSlow(team, x, z) {
+      function inIceField(x, z) {
         return iceFields.some(
           (field) =>
-            field.team !== team &&
             field.l > 0 &&
             Math.hypot(field.x - x, field.z - z) < ICE_FIELD_RADIUS,
-        )
-          ? ICE_FIELD_SLOW
-          : 1;
+        );
+      }
+      function iceSlow(x, z) {
+        return inIceField(x, z) ? ICE_FIELD_SLOW : 1;
+      }
+      function playIceFootstep(actor, position, walking, dt) {
+        if (!walking || !inIceField(position.x, position.z)) {
+          actor.iceStepT = 0;
+          return;
+        }
+        actor.iceStepT = (actor.iceStepT || 0) - dt;
+        if (actor.iceStepT <= 0) {
+          actor.iceStepT = 0.36;
+          playSfx(
+            "ice-footstep",
+            0.08,
+            true,
+            position,
+            1,
+          );
+        }
       }
       function removeIceField(field) {
         const i = iceFields.indexOf(field);
@@ -6170,7 +6398,7 @@
           playSfx("fire-ignite", 0.1, false, p);
         } else if (id === "gelo") {
           mkIce(p.x, p.z, team);
-          playSfx("grenade-flash", 0.12, false, p);
+          playSfx("ice-impact", 0.18, false, p);
         } else if (
           id === "barreira" &&
           (!netOn() || !by || by.peer === myPeerId())
@@ -6832,7 +7060,7 @@
           CUS ? MP.concat([{ n: "Meu mapa", t: "CUSTOM", g: CUS }]) : MP;
       const LD = {
         train:
-          "Treinamento: pratique com alvos imóveis que reaparecem. Aperte [B] para testar qualquer arma e equipamento.",
+          "Campo de tiro exclusivo com um dummy que reaparece para conferir o dano. Aperte [B] para testar qualquer arma e equipamento.",
         dm: "Mata-mata: 10 minutos, sozinho com 4 aliados robôs contra 5 inimigos que renascem. Loja liberada, colete e escudo ao renascer.",
         ctf: "Pega-Bandeira: capture a bandeira inimiga e leve-a até sua base. Devolva sua bandeira se ela for roubada. Primeiro time a 3 capturas vence.",
         gg: "Gun Game: você e 7 robôs, todos contra todos. Cada abate troca a sua arma; vence quem passar da faca.",
@@ -6944,7 +7172,11 @@
             a[1] +
             "</span>",
         ).join("");
-        $("mpl").innerHTML = "◀ MAPA: <b>" + ms[mi].n + "</b> ▶";
+        $("mpl").innerHTML =
+          "◀ MAPA: <b>" +
+          (lmode === "train" ? "Campo de Treinamento" : ms[mi].n) +
+          "</b> ▶";
+        $("mpl").style.pointerEvents = lmode === "train" ? "none" : "auto";
         $("rec").textContent = "RECORDE: ONDA " + rc;
         $("lbs").innerHTML =
           sl(cl ? "Aliado 1" : lmode === "online" ? onName(0) : 0) +
@@ -6979,7 +7211,11 @@
         showMenu();
       };
       $("mpl").onclick = (e) => {
-        if (lmode === "online" && room && !amHost) return;
+        if (
+          lmode === "train" ||
+          (lmode === "online" && room && !amHost)
+        )
+          return;
         const r = e.currentTarget.getBoundingClientRect();
         mi =
           (mi + (e.clientX < r.left + r.width / 2 ? -1 : 1) + maps().length) %
@@ -7391,14 +7627,16 @@
           }
           if (q.sd !== undefined && r.sd !== q.sd) {
             const dd = Math.hypot(q.x - pos.x, q.z - pos.z);
-            if (r.sd !== undefined && dd < 26)
+            if (r.sd !== undefined && dd < 26) {
+              const onIce = inIceField(r.g.position.x, r.g.position.z);
               playSfx(
-                "footstep",
-                0.1 * (1 - dd / 26),
+                onIce ? "ice-footstep" : "footstep",
+                (onIce ? 0.13 : 0.1) * (1 - dd / 26),
                 true,
                 r.g.position,
-                0.9 + Math.random() * 0.2,
+                1,
               );
+            }
             r.sd = q.sd;
           }
           r.g.visible = r.al;
@@ -7744,7 +7982,7 @@
         }
         if (lmode === "train") {
           spectator = false;
-          begin("train", maps()[mi].g);
+          begin("train", TRAINING_MAP);
           return;
         }
         if (lmode === "online") {
@@ -9115,7 +9353,7 @@
           flash: weaponSymbol("equipment-flash"),
           inc: weaponSymbol("equipment-inc"),
           barreira: weaponSymbol("equipment-barreira"),
-          gelo: '<svg viewBox="0 0 44 16" aria-hidden="true"><path d="M22 1v14m-5-12 10 10m0-10-10 10m-8-5h26m-17-4 2-3 2 3m8 0 2-3 2 3m-14 8 2 3 2-3m8 0 2 3 2-3"/></svg>',
+          gelo: '<svg viewBox="0 0 44 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M22 1v14m-5-12 10 10m0-10-10 10m-8-5h26m-17-4 2-3 2 3m8 0 2-3 2 3m-14 8 2 3 2-3m8 0 2 3 2-3"/></svg>',
         },
         killfeedIcon = (id, cls = "") =>
           '<img class="' +
@@ -9128,7 +9366,7 @@
           w.gr
             ? GIC[w.id] || weaponSymbol("class-" + w.c)
             : SHP.has(w.id)
-              ? weaponSymbol("weapon-" + w.id)
+              ? weaponSymbol("weapon-" + w.id, "class-" + w.c)
               : ico(w.c);
       const invHex = (n) => "#" + n.toString(16).padStart(6, "0"),
         invGroupNames = {
@@ -10280,7 +10518,7 @@
           2000,
         );
       }
-      function applyHost() {
+      function applyHost(dt) {
         const h =
           room && room.peers().find((p) => p.presence.host && !p.sameTab);
         if (!h) return;
@@ -10383,12 +10621,15 @@
           o.g.position.x += (a[1] - o.g.position.x) * 0.4;
           o.g.position.z += (a[2] - o.g.position.z) * 0.4;
           push(o.g.position, 0.6);
+          const walking =
+            Math.hypot(o.g.position.x - previousX, o.g.position.z - previousZ) >
+            0.001;
           animateFeet(
             o.feet,
-            Math.hypot(o.g.position.x - previousX, o.g.position.z - previousZ) >
-              0.001,
+            walking,
             t * 9 + (+a[0] || 0),
           );
+          playIceFootstep(o, o.g.position, walking, dt);
           o.g.rotation.y = a[3];
         });
         Object.keys(rb).forEach((id) => {
@@ -11790,6 +12031,8 @@
         "gun-sniper",
         "headshot",
         "hit",
+        "ice-footstep",
+        "ice-impact",
         "kill",
         "kill-headshot",
         "knife",
@@ -11804,6 +12047,10 @@
         "weapon-switch",
       ];
       const SFX_ECHO = new Set(["gun-shotgun", "gun-sniper"]);
+      const SFX_EXTENSIONS = {
+        "ice-footstep": "wav",
+        "ice-impact": "wav",
+      };
       const SFX_BUFFERS = Object.create(null);
       const SFX_PENDING = Object.create(null);
       let MASTER = null,
@@ -11861,11 +12108,17 @@
           return Promise.reject(new Error("Efeito sonoro desconhecido: " + id));
         if (SFX_BUFFERS[id]) return Promise.resolve(SFX_BUFFERS[id]);
         if (!SFX_PENDING[id]) {
-          SFX_PENDING[id] = fetch("sfx/" + id + ".mp3")
+          const extension = SFX_EXTENSIONS[id] || "mp3";
+          SFX_PENDING[id] = fetch("sfx/" + id + "." + extension)
             .then((response) => {
               if (!response.ok)
                 throw new Error(
-                  "Falha ao carregar sfx/" + id + ".mp3: " + response.status,
+                  "Falha ao carregar sfx/" +
+                    id +
+                    "." +
+                    extension +
+                    ": " +
+                    response.status,
                 );
               return response.arrayBuffer();
             })
@@ -11912,7 +12165,7 @@
           return null;
         }
         loadSfx(id).then(play).catch((error) => {
-          console.error("Falha ao carregar sfx/" + id + ".mp3.", error);
+          console.error("Falha ao carregar o efeito sonoro " + id + ".", error);
         });
         return null;
       }
@@ -11920,7 +12173,7 @@
         if (!ax()) return;
         SFX_IDS.forEach((id) =>
           loadSfx(id).catch((error) => {
-            console.error("Falha ao pré-carregar sfx/" + id + ".mp3.", error);
+            console.error("Falha ao pré-carregar o efeito sonoro " + id + ".", error);
           }),
         );
       }
@@ -11980,6 +12233,8 @@
       function spawnDM() {
         nm = 0;
         ROS = [{ name: "Você", team: ggOn ? "T" : myTeam }];
+        bots.forEach((bot) => S.remove(bot.g));
+        bots.length = 0;
         if (ggOn) {
           for (let i = 0; i < 7; i++) {
             const q = rndCell();
