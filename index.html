@@ -1953,6 +1953,17 @@
         font-size: clamp(13px, 2vw, 20px);
         letter-spacing: 2px;
       }
+      #teamPick .tpSide .tpPlayers {
+        display: none;
+        max-width: min(42vw, 520px);
+        font-size: clamp(12px, 1.5vw, 17px);
+        letter-spacing: 0;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+      #teamPick.online-classic .tpSide .tpPlayers {
+        display: block;
+      }
       #teamPick h2 {
         position: absolute;
         top: 7%;
@@ -3096,13 +3107,21 @@
     <div id="teamPick">
       <h2>ESCOLHA SEU TIME</h2>
       <button class="tpSide tpCT" data-team="CT">
-        <span><b>CT</b><small>CONTRA-TERRORISTAS</small></span>
+        <span>
+          <b>CT</b>
+          <small>CONTRA-TERRORISTAS</small>
+          <small class="tpPlayers"></small>
+        </span>
       </button>
       <button class="tpSide tpT" data-team="T">
-        <span><b>TR</b><small>TERRORISTAS</small></span>
+        <span>
+          <b>TR</b>
+          <small>TERRORISTAS</small>
+          <small class="tpPlayers"></small>
+        </span>
       </button>
       <button id="teamBack">VOLTAR</button>
-      <button id="teamSpectate" hidden>ASSISTIR PARTIDA</button>
+      <button id="teamSpectate" type="button" hidden>ESPECTADOR</button>
     </div>
     <div id="ed" class="glass">
       <b>CRIAR MAPA</b><br /><small
@@ -8124,6 +8143,8 @@
             if (state === "menu" && lmode === "online") showMenu();
           }
           const hh = room.peers().find((p) => p.presence.host && !p.sameTab);
+          if ($("teamPick").classList.contains("show"))
+            renderTeamPickPlayers();
           if (
             hh &&
             hh.presence.go &&
@@ -8140,10 +8161,37 @@
       let pendingTeamMap = null,
         pendingTeamStart = null,
         pendingSpectateAllowed = false;
+      function renderTeamPickPlayers() {
+        const onlineClassic =
+          lmode === "online" &&
+          (amHost ? ogm === "classic" : cgm === "classic");
+        $("teamPick").classList.toggle("online-classic", onlineClassic);
+        ["CT", "T"].forEach((team) => {
+          const names =
+            onlineClassic && room
+              ? room
+                  .peers()
+                  .filter(
+                    (p) =>
+                      p.presence.tmReady &&
+                      !p.presence.spec &&
+                      p.presence.tm === team,
+                  )
+                  .map((p) =>
+                    esc(p.sameTab ? myName || p.presence.n : p.presence.n) ||
+                    "Jogador",
+                  )
+              : [];
+          $("teamPick")
+            .querySelector('.tpSide[data-team="' + team + '"] .tpPlayers')
+            .textContent = names.join(" · ");
+        });
+      }
       function showTeamPick(g, onPick, allowSpectate = false) {
         pendingTeamMap = g;
         pendingTeamStart = onPick || null;
         pendingSpectateAllowed = allowSpectate;
+        renderTeamPickPlayers();
         $("teamSpectate").hidden = !allowSpectate;
         $("lb").classList.remove("show");
         $("ed").style.display = "none";
@@ -8151,12 +8199,10 @@
       }
       $("teamPick").addEventListener("click", (e) => {
         const team = e.target.closest("[data-team]");
-        if (
-          e.target.closest("#teamSpectate") &&
-          pendingSpectateAllowed &&
-          room &&
-          !amHost
-        ) {
+        if (e.target.closest("#teamSpectate") && pendingSpectateAllowed) {
+          const onlineSpectator = room && lmode === "online" && !amHost;
+          const localSpectator = lmode === "classic";
+          if (!onlineSpectator && !localSpectator) return;
           const g = pendingTeamMap;
           $("teamPick").classList.remove("show");
           pendingTeamMap = null;
@@ -8165,12 +8211,19 @@
           spectator = true;
           specI = 0;
           scp.set(0, 0, 0);
-          room.presence({ spec: 1, tmReady: 0 });
-          begin("cnet", g);
-          alive = false;
-          hp = 0;
-          gun.visible = false;
-          room.presence({ spec: 1, tmReady: 0, al: 0, m: 1 });
+          if (onlineSpectator) {
+            room.presence({ spec: 1, tmReady: 0 });
+            begin("cnet", g);
+            alive = false;
+            hp = 0;
+            gun.visible = false;
+            room.presence({ spec: 1, tmReady: 0, al: 0, m: 1 });
+          } else {
+            begin("classic", g);
+            alive = false;
+            hp = 0;
+            gun.visible = false;
+          }
           return;
         }
         if (team) {
@@ -8278,7 +8331,7 @@
           return;
         }
         if (lmode === "classic") {
-          showTeamPick(maps()[mi].g);
+          showTeamPick(maps()[mi].g, null, true);
           return;
         }
         begin(lmode, maps()[mi].g);
